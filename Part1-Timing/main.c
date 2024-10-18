@@ -1,5 +1,6 @@
 #include "utility.h"
 
+
 #ifndef VISUAL
 #define PRINT_FUNC print_results_plaintext
 #else
@@ -8,10 +9,10 @@
 
 #define LINE_SIZE 64
 // [1.2] TODO: Uncomment the following lines and fill in the correct size
-//#define L1_SIZE TODO
-//#define L2_SIZE TODO
-//#define L3_SIZE TODO
-//#define BUFF_SIZE TODO
+#define L1_SIZE 32768
+#define L2_SIZE 262144
+#define L3_SIZE 6291456
+// #define BUFF_SIZE 64
  
 int main (int ac, char **av) {
 
@@ -37,7 +38,8 @@ int main (int ac, char **av) {
 
     // [1.2] TODO: Uncomment the following line to allocate a buffer of a size
     // of your chosing. This will help you measure the latencies at L2 and L3.
-    //volatile uint8_t *eviction_buffer = (uint8_t *)malloc(BUFF_SIZE);
+    //int buff_size = 128;
+    //volatile uint8_t *eviction_buffer = (uint8_t *)malloc(buff_size);
 
     // Example: Measure L1 access latency, store results in l1_latency array
     for (int i=0; i<SAMPLES; i++){
@@ -53,16 +55,58 @@ int main (int ac, char **av) {
     // [1.2] TODO: Measure DRAM Latency, store results in dram_latency array
     // ======
     //
-
+	for (int i=0; i<SAMPLES; i++){
+		clflush((void*)&target_buffer[0]);
+		lfence();
+		dram_latency[i] = measure_one_block_access_time((uint64_t)target_buffer);
+	}
+	
     // ======
     // [1.2] TODO: Measure L2 Latency, store results in l2_latency array
     // ======
     //
+	for (int i=0; i<SAMPLES; i++) {
+		volatile uint8_t *evict_buffer = (uint8_t *)malloc(2*L1_SIZE);
+
+		// Flush value and read to make sure it is in all caches
+		clflush((void*)&target_buffer[0]);
+		lfence();
+		tmp = target_buffer[0];
+
+		// Fill in your eviction buffer which is enough to evict L1
+		for (int i=0; i<2*L1_SIZE; i++){
+			evict_buffer[i] = i;
+		}
+		lfence();
+
+		// Now access your target buffer again
+        l2_latency[i] = measure_one_block_access_time((uint64_t)target_buffer);
+		free((void *)evict_buffer);
+	}
 
     // ======
     // [1.2] TODO: Measure L3 Latency, store results in l3_latency array
     // ======
     //
+	for (int i=0; i<SAMPLES; i++) {
+		volatile uint8_t *evict_buffer = (uint8_t *)malloc(2*L2_SIZE);
+
+		// Flush value and read to make sure it is in all caches
+		clflush((void*)&target_buffer[0]);
+		lfence();
+		tmp = target_buffer[0];
+
+		// Fill in your eviction buffer which is enough to evict L2
+		for (int i=0; i<2*L2_SIZE; i++){
+			evict_buffer[i] = i;
+		}
+		lfence();
+
+		// Now access your target buffer again
+        l3_latency[i] = measure_one_block_access_time((uint64_t)target_buffer);
+		free((void *)evict_buffer);
+	}
+	
 
 
     // Print the results to the screen

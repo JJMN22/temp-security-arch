@@ -9,7 +9,7 @@
 #ifndef __UTILITY_H__
 #define __UTILITY_H__
 
-#define SAMPLES 10
+#define SAMPLES 50
 
 
 // Function to read the time stamp counter, which is called tsc for short
